@@ -100,7 +100,7 @@ class IMAPClient(imapclient.IMAPClient):
         except BrokenPipeError:
             pass
 
-    def __init__(self, host, username, password, port=None, ssl=True,
+    def __init__(self, host, method, username, password, port=None, ssl=True,
                  verify=True, timeout=30, max_retries=4,
                  initial_folder="INBOX", idle_callback=None, idle_timeout=30):
         """
@@ -108,8 +108,9 @@ class IMAPClient(imapclient.IMAPClient):
 
         Args:
             host (str): The server hostname or IP address
+            method (str): Authentication method Basic/Oauth2
             username (str): The username
-            password (str): The password
+            password (str): The password or if Oauth is used the token
             port (int): The port
             ssl (bool): Use SSL or TLS
             verify (bool): Verify the SSL/TLS certificate
@@ -124,7 +125,7 @@ class IMAPClient(imapclient.IMAPClient):
         if verify is False:
             ssl_context.check_hostname = False
             ssl_context.verify_mode = CERT_NONE
-        self._init_args = dict(host=host, username=username,
+        self._init_args = dict(host=host, method=method, username=username,
                                password=password, port=port, ssl=ssl,
                                verify=verify,
                                timeout=timeout,
@@ -147,7 +148,10 @@ class IMAPClient(imapclient.IMAPClient):
                                        use_uid=True,
                                        timeout=timeout)
         try:
-            self.login(username, password)
+            if(self.method == "Oauth2"):
+                self.oauth2_login(username, password, mech="XOAUTH2")
+            else:
+                self.login(username, password)
             self.server_capabilities = self.capabilities()
             self._move_supported = b"MOVE" in self.server_capabilities
             self._idle_supported = b"IDLE" in self.server_capabilities
